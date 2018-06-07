@@ -7,7 +7,7 @@ endif()
 project(dt)
 
 add_executable(dtclient dtclient.cpp)
-target_link_libraries(dtclient PUBLIC Boost::system Boost::thread)
+target_link_libraries(dtclient PUBLIC Boost::system Boost::thread PRIVATE gsl)
 target_compile_features(dtclient PRIVATE cxx_std_14)
 set_target_properties(dtclient PROPERTIES CXX_EXTENSIONS off)
 

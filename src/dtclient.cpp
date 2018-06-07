@@ -3,6 +3,8 @@
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 
+#include <gsl-lite.hpp>
+
 int main(int argc, char* argv[]) {
     try {
         if (argc != 2) {

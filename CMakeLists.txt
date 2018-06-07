@@ -55,6 +55,11 @@ set(Boost_USE_STATIC_RUNTIME OFF)
 find_package(Boost 1.58 REQUIRED COMPONENTS system thread)
 message(STATUS "Boost version: ${Boost_VERSION}")
 
+# gsl-lite
+set(GSL_LITE_INCLUDE_DIR thirdparty)
+add_library(gsl INTERFACE)
+target_include_directories(gsl INTERFACE ${GSL_LITE_INCLUDE_DIR})
+
 include_directories(include)
 
 add_subdirectory(src)
