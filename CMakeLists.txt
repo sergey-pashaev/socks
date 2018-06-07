@@ -60,7 +60,5 @@ set(GSL_LITE_INCLUDE_DIR thirdparty)
 add_library(gsl INTERFACE)
 target_include_directories(gsl INTERFACE ${GSL_LITE_INCLUDE_DIR})
 
-include_directories(include)
-
 add_subdirectory(src)
 add_subdirectory(test)
