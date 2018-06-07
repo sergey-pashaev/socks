@@ -8,7 +8,7 @@ addons:
       - ubuntu-toolchain-r-test
     packages:
       - g++-5
-      - libboost1.58-all-dev
+      - libboost1.58-dev
 
 script:
   - CXX=/usr/bin/g++-5 CC=/usr/bin/gcc-5 cmake .
