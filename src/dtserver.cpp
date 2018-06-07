@@ -1,3 +1,4 @@
+#include <chrono>
 #include <ctime>
 #include <iostream>
 #include <string>
@@ -7,8 +8,9 @@
 using boost::asio::ip::tcp;
 
 std::string daytime_string() {
-    using namespace std;
-    time_t now = time(0);
+    using std::chrono::system_clock;
+    system_clock::time_point tp = system_clock::now();
+    std::time_t now = system_clock::to_time_t(tp);
     return ctime(&now);
 }
 
