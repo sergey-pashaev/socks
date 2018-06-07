@@ -3,14 +3,14 @@
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 
-using boost::asio::ip::tcp;
-
 int main(int argc, char* argv[]) {
     try {
         if (argc != 2) {
             std::cerr << "Usage: " << argv[0] << " <host>" << std::endl;
             return 1;
         }
+
+        using boost::asio::ip::tcp;
 
         boost::asio::io_service io;
         tcp::resolver resolver(io);

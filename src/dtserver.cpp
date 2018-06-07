@@ -5,8 +5,6 @@
 
 #include <boost/asio.hpp>
 
-using boost::asio::ip::tcp;
-
 std::string daytime_string() {
     using std::chrono::system_clock;
     system_clock::time_point tp = system_clock::now();
@@ -16,6 +14,8 @@ std::string daytime_string() {
 
 int main() {
     try {
+        using boost::asio::ip::tcp;
+
         boost::asio::io_service io;
         tcp::acceptor acceptor(io, tcp::endpoint(tcp::v4(), 13));
 
