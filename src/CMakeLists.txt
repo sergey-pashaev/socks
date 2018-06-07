@@ -1,15 +1,17 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.1..3.11)
 
-project(socks)
+if(${CMAKE_VERSION} VERSION_LESS 3.12)
+  cmake_policy(VERSION ${CMAKE_VERSION})
+endif()
 
-find_package(Boost REQUIRED COMPONENTS system thread regex)
-IF(Boost_FOUND)
-  include_directories(${Boost_INCLUDE_DIRS})
-  link_directories(${Boost_LIBRARY_DIRS})
-ENDIF(Boost_FOUND)
+project(dt)
 
-# add_executable(sclient client.cpp)
-# target_link_libraries(sclient ${Boost_LIBRARIES})
+add_executable(dtclient dtclient.cpp)
+target_link_libraries(dtclient PUBLIC Boost::system Boost::thread)
+target_compile_features(dtclient PRIVATE cxx_std_14)
+set_target_properties(dtclient PROPERTIES CXX_EXTENSIONS off)
 
-add_executable(tests tests.cpp client.cpp thirdparty/catch2-main.cpp)
-target_link_libraries(tests ${Boost_LIBRARIES})
+add_executable(dtserver dtserver.cpp)
+target_link_libraries(dtserver PUBLIC Boost::system Boost::thread)
+target_compile_features(dtserver PRIVATE cxx_std_14)
+set_target_properties(dtserver PROPERTIES CXX_EXTENSIONS off)
