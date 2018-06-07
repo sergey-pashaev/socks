@@ -52,7 +52,11 @@ set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 
-find_package(Boost 1.54 REQUIRED COMPONENTS system thread)
+if(MSVC)
+  find_package(Boost 1.60 REQUIRED COMPONENTS system thread)
+else()
+  find_package(Boost 1.54 REQUIRED COMPONENTS system thread)
+endif()
 message(STATUS "Boost version: ${Boost_VERSION}")
 
 # gsl-lite
