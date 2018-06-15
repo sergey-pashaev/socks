@@ -12,19 +12,24 @@ using tcp = ba::ip::tcp;
 
 class Session : public std::enable_shared_from_this<Session> {
    public:
-    Session(ba::io_service& io, tcp::socket socket)
-        : downstream_socket_{std::move(socket)}, upstream_socket_{io} {}
+    static std::unique_ptr<Session> Create(ba::io_service& io) {
+        return std::unique_ptr<Session>(new Session(io));
+    }
 
     void Start() { ReadHeaders(); }
 
+    tcp::socket& Socket() { return downstream_socket_; }
+
    private:
+    Session(ba::io_service& io)
+        : downstream_socket_{io}, upstream_socket_{io} {}
+
     void ReadHeaders() {
         auto self(shared_from_this());
         ba::async_read(
             downstream_socket_, request_.header_buffers(),
             [this, self](const bs::error_code& ec, std::size_t length) {
                 if (!ec) {
-                    assert(length == 8);
                     ReadUserId();
                 }
             });
@@ -166,25 +171,26 @@ class Session : public std::enable_shared_from_this<Session> {
 
 class Server {
    public:
-    Server(ba::io_service& io, tcp::endpoint ep)
-        : acceptor_{io, ep}, socket_{io} {
-        DoAccept(io);
+    Server(ba::io_service& io, tcp::endpoint ep) : io_{io}, acceptor_{io, ep} {
+        Accept();
     }
 
    private:
-    void DoAccept(ba::io_service& io) {
-        acceptor_.async_accept(socket_, [this, &io](const bs::error_code& ec) {
-            if (!ec) {
-                std::make_shared<Session>(io, std::move(socket_))->Start();
-            }
+    void Accept() {
+        std::shared_ptr<Session> session(Session::Create(io_));
+        acceptor_.async_accept(session->Socket(),
+                               [this, session](const bs::error_code& ec) {
+                                   if (!ec) {
+                                       session->Start();
+                                   }
 
-            DoAccept(io);
-        });
+                                   Accept();
+                               });
     }
 
    private:
+    ba::io_service& io_;
     ba::ip::tcp::acceptor acceptor_;
-    ba::ip::tcp::socket socket_;
 };
 
 int main(int argc, char* argv[]) {
