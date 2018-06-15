@@ -11,9 +11,17 @@ namespace bs = boost::system;
 using tcp = ba::ip::tcp;
 
 class Session : public std::enable_shared_from_this<Session> {
+   private:
+    struct _ctor_tag {
+        explicit _ctor_tag() {}
+    };
+
    public:
+    Session(_ctor_tag, ba::io_service& io)
+        : downstream_socket_{io}, upstream_socket_{io} {}
+
     static std::unique_ptr<Session> Create(ba::io_service& io) {
-        return std::unique_ptr<Session>(new Session(io));
+        return std::make_unique<Session>(_ctor_tag{}, io);
     }
 
     void Start() { ReadHeaders(); }
@@ -21,9 +29,6 @@ class Session : public std::enable_shared_from_this<Session> {
     tcp::socket& Socket() { return downstream_socket_; }
 
    private:
-    Session(ba::io_service& io)
-        : downstream_socket_{io}, upstream_socket_{io} {}
-
     void ReadHeaders() {
         auto self(shared_from_this());
         ba::async_read(
