@@ -52,7 +52,7 @@ class Session : public std::enable_shared_from_this<Session> {
 
                     switch (request_.command()) {
                         case socks4::Request::Command::connect: {
-                            ProcessConnect();
+                            Connect();
                             break;
                         }
                         case socks4::Request::Command::bind:
@@ -68,7 +68,7 @@ class Session : public std::enable_shared_from_this<Session> {
         return socks4::Response::Status::granted;
     }
 
-    void ProcessConnect() {
+    void Connect() {
         auto resp = std::make_shared<socks4::Response>(
             CheckAccess(request_.user(), request_.endpoint()) /*,
                                                  request_.endpoint()*/);
@@ -81,7 +81,7 @@ class Session : public std::enable_shared_from_this<Session> {
                 switch (resp->status()) {
                     case socks4::Response::Status::granted: {
                         std::cout << request_.user() << ' ' << "granted\n";
-                        DoConnect();
+                        Relay();
                         break;
                     }
                     default:
@@ -102,7 +102,7 @@ class Session : public std::enable_shared_from_this<Session> {
         }
     }
 
-    void DoConnect() {
+    void Relay() {
         auto self(shared_from_this());
         upstream_socket_.async_connect(request_.endpoint(),
                                        [this, self](const bs::error_code& ec) {
