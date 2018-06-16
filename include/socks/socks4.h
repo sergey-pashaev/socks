@@ -93,8 +93,7 @@ class Response {
 
     Response(Status status) : version_(0), status_(status) {}
 
-    Response(Status status, tcp::endpoint ep)
-        : version_(version), status_(status) {
+    Response(Status status, tcp::endpoint ep) : version_(0), status_(status) {
         if (ep.protocol() != tcp::v4()) {
             throw bs::system_error(ba::error::address_family_not_supported);
         }
