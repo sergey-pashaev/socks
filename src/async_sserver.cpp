@@ -32,39 +32,40 @@ class Session : public std::enable_shared_from_this<Session> {
    private:
     void ReadHeaders() {
         auto self(shared_from_this());
-        ba::async_read(
-            downstream_socket_, request_.header_buffers(),
-            [this, self](const bs::error_code& ec, std::size_t length) {
-                if (!ec) {
-                    ReadUserId();
-                }
-            });
+        auto handler = [this, self](const bs::error_code& ec,
+                                    std::size_t length) {
+            if (!ec) {
+                ReadUserId();
+            }
+        };
+
+        ba::async_read(downstream_socket_, request_.header_buffers(), handler);
     }
 
     void ReadUserId() {
         auto self(shared_from_this());
-        ba::async_read_until(
-            downstream_socket_, buf_, 0x00,
-            [this, self](const bs::error_code& ec, std::size_t) {
-                if (!ec) {
-                    std::string user((std::istreambuf_iterator<char>(&buf_)),
-                                     std::istreambuf_iterator<char>());
-                    request_.set_user(user);
+        auto handler = [this, self](const bs::error_code& ec, std::size_t) {
+            if (!ec) {
+                std::string user((std::istreambuf_iterator<char>(&buf_)),
+                                 std::istreambuf_iterator<char>());
+                request_.set_user(user);
 
-                    switch (request_.command()) {
-                        case socks4::Request::Command::connect: {
-                            Connect();
-                            break;
-                        }
-                        case socks4::Request::Command::bind: {
-                            Bind();
-                            break;
-                        }
-                        // reject bad requests
-                        default: { Reject(); }
+                switch (request_.command()) {
+                    case socks4::Request::Command::connect: {
+                        Connect();
+                        break;
                     }
+                    case socks4::Request::Command::bind: {
+                        Bind();
+                        break;
+                    }
+                    // reject bad requests
+                    default: { Reject(); }
                 }
-            });
+            }
+        };
+
+        ba::async_read_until(downstream_socket_, buf_, 0x00, handler);
     }
 
     socks4::Response::Status CheckAccess(const std::string&, tcp::endpoint) {
@@ -77,19 +78,20 @@ class Session : public std::enable_shared_from_this<Session> {
             CheckAccess(request_.user(), request_.endpoint()));
 
         auto self(shared_from_this());
-        ba::async_write(downstream_socket_, resp->buffers(),
-                        [this, self, resp](const bs::error_code& ec,
-                                           std::size_t written_bytes) {
-                            switch (resp->status()) {
-                                case socks4::Response::Status::granted: {
-                                    Relay();
-                                    break;
-                                }
-                                default:
-                                    Close();
-                                    break;
-                            }
-                        });
+        auto handler = [this, self, resp](const bs::error_code& ec,
+                                          std::size_t written_bytes) {
+            switch (resp->status()) {
+                case socks4::Response::Status::granted: {
+                    Relay();
+                    break;
+                }
+                default:
+                    Close();
+                    break;
+            }
+        };
+
+        ba::async_write(downstream_socket_, resp->buffers(), handler);
     }
 
     void Bind() {
@@ -102,44 +104,44 @@ class Session : public std::enable_shared_from_this<Session> {
             status, acceptor->local_endpoint());
 
         auto self(shared_from_this());
-        ba::async_write(
-            downstream_socket_, resp->buffers(),
-            [this, self, resp, acceptor](const bs::error_code& ec,
-                                         std::size_t written_bytes) {
-                switch (resp->status()) {
-                    case socks4::Response::Status::granted: {
-                        Accept(acceptor);
-                        break;
-                    }
-                    default:
-                        Close();
-                        break;
+        auto handler = [this, self, resp, acceptor](const bs::error_code& ec,
+                                                    std::size_t length) {
+            switch (resp->status()) {
+                case socks4::Response::Status::granted: {
+                    Accept(acceptor);
+                    break;
                 }
-            });
+                default:
+                    Close();
+                    break;
+            }
+        };
+
+        ba::async_write(downstream_socket_, resp->buffers(), handler);
     }
 
     void Reject() {
         auto resp = std::make_shared<socks4::Response>(
             socks4::Response::Status::rejected);
-
         auto self(shared_from_this());
-        ba::async_write(
-            downstream_socket_, resp->buffers(),
-            [this, self, resp](const bs::error_code& ec,
-                               std::size_t written_bytes) { Close(); });
+        auto handler = [this, self, resp](const bs::error_code& ec,
+                                          std::size_t length) { Close(); };
+
+        ba::async_write(downstream_socket_, resp->buffers(), handler);
     }
 
     void Accept(std::shared_ptr<tcp::acceptor> acceptor) {
         auto self(shared_from_this());
-        acceptor->async_accept(
-            upstream_socket_, [this, self, acceptor](const bs::error_code& ec) {
-                if (!ec) {
-                    UpstreamRead();
-                    DownstreamRead();
-                } else {
-                    Close();
-                }
-            });
+        auto handler = [this, self, acceptor](const bs::error_code& ec) {
+            if (!ec) {
+                UpstreamRead();
+                DownstreamRead();
+            } else {
+                Close();
+            }
+        };
+
+        acceptor->async_accept(upstream_socket_, handler);
     }
 
     void Close() {
@@ -154,65 +156,75 @@ class Session : public std::enable_shared_from_this<Session> {
 
     void Relay() {
         auto self(shared_from_this());
-        upstream_socket_.async_connect(request_.endpoint(),
-                                       [this, self](const bs::error_code& ec) {
-                                           if (!ec) {
-                                               UpstreamRead();
-                                               DownstreamRead();
-                                           } else {
-                                               Close();
-                                           }
-                                       });
+        auto handler = [this, self](const bs::error_code& ec) {
+            if (!ec) {
+                UpstreamRead();
+                DownstreamRead();
+            } else {
+                Close();
+            }
+        };
+
+        upstream_socket_.async_connect(request_.endpoint(), handler);
     }
 
     void UpstreamRead() {
         auto self(shared_from_this());
-        upstream_socket_.async_read_some(
-            ba::buffer(upstream_buf_),
-            [this, self](const bs::error_code& ec, std::size_t length) {
-                if (!ec) {
-                    DownstreamWrite(length);
-                } else {
-                    Close();
-                }
-            });
+        auto handler = [this, self](const bs::error_code& ec,
+                                    std::size_t length) {
+            if (!ec) {
+                DownstreamWrite(length);
+            } else {
+                Close();
+            }
+        };
+
+        upstream_socket_.async_read_some(ba::buffer(upstream_buf_), handler);
     }
 
     void DownstreamRead() {
         auto self(shared_from_this());
-        downstream_socket_.async_read_some(
-            ba::buffer(downstream_buf_),
-            [this, self](const bs::error_code& ec, std::size_t length) {
-                if (!ec) {
-                    UpstreamWrite(length);
-                } else {
-                    Close();
-                }
-            });
+        auto handler = [this, self](const bs::error_code& ec,
+                                    std::size_t length) {
+            if (!ec) {
+                UpstreamWrite(length);
+            } else {
+                Close();
+            }
+        };
+
+        downstream_socket_.async_read_some(ba::buffer(downstream_buf_),
+                                           handler);
     }
 
     void DownstreamWrite(std::size_t length) {
         auto self(shared_from_this());
-        async_write(downstream_socket_, ba::buffer(upstream_buf_, length),
-                    [this, self](const bs::error_code& ec, std::size_t length) {
-                        if (!ec) {
-                            UpstreamRead();
-                        } else {
-                            Close();
-                        }
-                    });
+        auto handler = [this, self](const bs::error_code& ec,
+                                    std::size_t length) {
+            if (!ec) {
+                UpstreamRead();
+            } else {
+                Close();
+            }
+        };
+
+        ba::async_write(downstream_socket_, ba::buffer(upstream_buf_, length),
+                        handler);
     }
 
     void UpstreamWrite(std::size_t length) {
         auto self(shared_from_this());
-        async_write(upstream_socket_, ba::buffer(downstream_buf_, length),
-                    [this, self](const bs::error_code& ec, std::size_t length) {
-                        if (!ec) {
-                            DownstreamRead();
-                        } else {
-                            Close();
-                        }
-                    });
+        auto handler = [this, self](const bs::error_code& ec,
+                                    std::size_t length) {
+            if (!ec) {
+                DownstreamRead();
+            } else {
+                Close();
+            }
+        };
+
+        ba::async_write(upstream_socket_, ba::buffer(downstream_buf_, length),
+                        handler);
     }
 
    private:
@@ -232,16 +244,18 @@ class Server {
 
    private:
     void Accept() {
-        std::shared_ptr<Session> session(
-            Session::Create(acceptor_.get_io_service()));
-        acceptor_.async_accept(session->Socket(),
-                               [this, session](const bs::error_code& ec) {
-                                   if (!ec) {
-                                       session->Start();
-                                   }
+        std::shared_ptr<Session> session{
+            Session::Create(acceptor_.get_io_service())};
 
-                                   Accept();
-                               });
+        auto accept_handler = [this, session](const bs::error_code& ec) {
+            if (!ec) {
+                session->Start();
+            }
+
+            Accept();
+        };
+
+        acceptor_.async_accept(session->Socket(), accept_handler);
     }
 
    private:
