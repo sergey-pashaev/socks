@@ -19,7 +19,7 @@ class Session : public std::enable_shared_from_this<Session> {
 
    public:
     Session(_ctor_tag, ba::io_service& io)
-        : io_{io}, downstream_socket_{io}, upstream_socket_{io} {}
+        : downstream_socket_{io}, upstream_socket_{io} {}
 
     static std::unique_ptr<Session> Create(ba::io_service& io) {
         return std::make_unique<Session>(_ctor_tag{}, io);
@@ -96,7 +96,8 @@ class Session : public std::enable_shared_from_this<Session> {
         auto status = CheckAccess(request_.user(), request_.endpoint());
 
         tcp::endpoint ep{tcp::v4(), 0};
-        auto acceptor = std::make_shared<tcp::acceptor>(io_, ep);
+        auto acceptor = std::make_shared<tcp::acceptor>(
+            downstream_socket_.get_io_service(), ep);
         auto resp = std::make_shared<socks4::Response>(
             status, acceptor->local_endpoint());
 
@@ -215,7 +216,6 @@ class Session : public std::enable_shared_from_this<Session> {
     }
 
    private:
-    ba::io_service& io_;
     socks4::Request request_;
     ba::streambuf buf_;
     tcp::socket downstream_socket_;
@@ -226,13 +226,14 @@ class Session : public std::enable_shared_from_this<Session> {
 
 class Server {
    public:
-    Server(ba::io_service& io, tcp::endpoint ep) : io_{io}, acceptor_{io, ep} {
+    Server(ba::io_service& io, tcp::endpoint ep) : acceptor_{io, ep} {
         Accept();
     }
 
    private:
     void Accept() {
-        std::shared_ptr<Session> session(Session::Create(io_));
+        std::shared_ptr<Session> session(
+            Session::Create(acceptor_.get_io_service()));
         acceptor_.async_accept(session->Socket(),
                                [this, session](const bs::error_code& ec) {
                                    if (!ec) {
@@ -244,7 +245,6 @@ class Server {
     }
 
    private:
-    ba::io_service& io_;
     ba::ip::tcp::acceptor acceptor_;
 };
 
