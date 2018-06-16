@@ -19,7 +19,7 @@ class Session : public std::enable_shared_from_this<Session> {
 
    public:
     Session(_ctor_tag, ba::io_service& io)
-        : downstream_socket_{io}, upstream_socket_{io} {}
+        : io_{io}, downstream_socket_{io}, upstream_socket_{io} {}
 
     static std::unique_ptr<Session> Create(ba::io_service& io) {
         return std::make_unique<Session>(_ctor_tag{}, io);
@@ -56,9 +56,12 @@ class Session : public std::enable_shared_from_this<Session> {
                             Connect();
                             break;
                         }
-                        case socks4::Request::Command::bind:
-                            // todo:
+                        case socks4::Request::Command::bind: {
+                            Bind();
                             break;
+                        }
+                        // reject bad requests
+                        default: { Reject(); }
                     }
                 }
             });
@@ -71,24 +74,69 @@ class Session : public std::enable_shared_from_this<Session> {
 
     void Connect() {
         auto resp = std::make_shared<socks4::Response>(
-            CheckAccess(request_.user(), request_.endpoint()) /*,
-                                                 request_.endpoint()*/);
+            CheckAccess(request_.user(), request_.endpoint()));
+
+        auto self(shared_from_this());
+        ba::async_write(downstream_socket_, resp->buffers(),
+                        [this, self, resp](const bs::error_code& ec,
+                                           std::size_t written_bytes) {
+                            switch (resp->status()) {
+                                case socks4::Response::Status::granted: {
+                                    Relay();
+                                    break;
+                                }
+                                default:
+                                    Close();
+                                    break;
+                            }
+                        });
+    }
+
+    void Bind() {
+        auto status = CheckAccess(request_.user(), request_.endpoint());
+
+        tcp::endpoint ep{tcp::v4(), 0};
+        auto acceptor = std::make_shared<tcp::acceptor>(io_, ep);
+        auto resp = std::make_shared<socks4::Response>(
+            status, acceptor->local_endpoint());
+
+        auto self(shared_from_this());
+        ba::async_write(
+            downstream_socket_, resp->buffers(),
+            [this, self, resp, acceptor](const bs::error_code& ec,
+                                         std::size_t written_bytes) {
+                switch (resp->status()) {
+                    case socks4::Response::Status::granted: {
+                        Accept(acceptor);
+                        break;
+                    }
+                    default:
+                        Close();
+                        break;
+                }
+            });
+    }
+
+    void Reject() {
+        auto resp = std::make_shared<socks4::Response>(
+            socks4::Response::Status::rejected);
 
         auto self(shared_from_this());
         ba::async_write(
             downstream_socket_, resp->buffers(),
             [this, self, resp](const bs::error_code& ec,
-                               std::size_t written_bytes) {
-                switch (resp->status()) {
-                    case socks4::Response::Status::granted: {
-                        std::cout << request_.user() << ' ' << "granted\n";
-                        Relay();
-                        break;
-                    }
-                    default:
-                        std::cout << request_.user() << ' ' << "denied\n";
-                        Close();
-                        break;
+                               std::size_t written_bytes) { Close(); });
+    }
+
+    void Accept(std::shared_ptr<tcp::acceptor> acceptor) {
+        auto self(shared_from_this());
+        acceptor->async_accept(
+            upstream_socket_, [this, self, acceptor](const bs::error_code& ec) {
+                if (!ec) {
+                    UpstreamRead();
+                    DownstreamRead();
+                } else {
+                    Close();
                 }
             });
     }
@@ -167,6 +215,7 @@ class Session : public std::enable_shared_from_this<Session> {
     }
 
    private:
+    ba::io_service& io_;
     socks4::Request request_;
     ba::streambuf buf_;
     tcp::socket downstream_socket_;
