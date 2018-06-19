@@ -2,6 +2,7 @@
 #include <memory>
 #include <string>
 
+#include <boost/array.hpp>
 #include <boost/asio.hpp>
 
 #include <socks/socks4.h>
@@ -170,8 +171,8 @@ class Session : public std::enable_shared_from_this<Session> {
     ba::streambuf buf_;
     tcp::socket downstream_socket_;
     tcp::socket upstream_socket_;
-    std::array<char, 4096> upstream_buf_;
-    std::array<char, 4096> downstream_buf_;
+    boost::array<char, 4096> upstream_buf_;
+    boost::array<char, 4096> downstream_buf_;
 };
 
 class Server {
