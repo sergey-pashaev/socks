@@ -2,14 +2,46 @@ dist: trusty
 sudo: false
 language: cpp
 
+os:
+  - linux
+  - osx
+
+compiler:
+  - gcc
+  - clang
+
+env:
+  - TARGET_CPU=amd64
+  - TARGET_CPU=x86
+
+matrix:
+  exclude:
+    - os:       osx
+      compiler: gcc
+    - os:       osx
+      env:      TARGET_CPU=x86
+
+
+# build lifecycle
 addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
     packages:
       - g++-5
+      - clang
       - libboost-all-dev
 
+install:
+  - uname -a
+  - $CC --version
+  - $CXX --version
+  - if [ "$CXX" = "g++" ]; then export CXX="/usr/bin/g++-5" CC="/usr/bin/gcc-5"; fi
+  - $CC --version
+  - $CXX --version
+
 script:
-  - CXX=/usr/bin/g++-5 CC=/usr/bin/gcc-5 cmake .
+  - mkdir build
+  - cd build
+  - cmake .. -DTARGET_CPU=$TARGET_CPU
   - cmake --build . -- -j2
