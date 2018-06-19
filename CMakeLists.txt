@@ -4,17 +4,16 @@ if(${CMAKE_VERSION} VERSION_LESS 3.12)
   cmake_policy(VERSION ${CMAKE_VERSION})
 endif()
 
-project(modern-cpp-template)
+project(socks)
 
-# use ccache
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
   set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
 endif()
 
+# use clang-tidy if available
 option(USE_CLANG_TIDY "Use clang-tidy to perform code analysis" ON)
 if(USE_CLANG_TIDY)
-  # add clang-tidy if available
   if(CMAKE_VERSION VERSION_GREATER 3.6)
     option(CLANG_TIDY_FIX "Perform fixes for Clang-Tidy" OFF)
     find_program(
@@ -32,9 +31,9 @@ if(USE_CLANG_TIDY)
   endif()
 endif()
 
+# use iwyu if available
 option(USE_IWYU "Use include-what-you-use to perform include dependencies check" OFF)
 if(USE_IWYU)
-  # add iwyu if available
   if(CMAKE_VERSION VERSION_GREATER 3.3)
     find_program(
       IWYU_PATH
