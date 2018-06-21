@@ -269,12 +269,11 @@ class Session : public std::enable_shared_from_this<Session> {
         downstream_buf_[2] = socks5::reserved;
         downstream_buf_[3] = static_cast<unsigned char>(RequestAddressType());
 
-        // fixme
-        for (std::size_t i = 4; i < 10; ++i) {  // minimum response size
+        const std::size_t response_size = RequestSize();  // same as request
+        for (std::size_t i = 4; i < response_size; ++i) {
             downstream_buf_[i] = 0x00;
         }
 
-        const std::size_t response_size = 10;
         ba::async_write(downstream_socket_,
                         ba::buffer(downstream_buf_.data(), response_size),
                         handler);
