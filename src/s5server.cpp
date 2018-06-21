@@ -279,6 +279,29 @@ class Session : public std::enable_shared_from_this<Session> {
                         handler);
     }
 
+    socks5::Command RequestCommand() const {
+        return static_cast<socks5::Command>(downstream_buf_[1]);
+    }
+
+    ba::ip::address RequestAddress() const {
+        const socks5::AddressType atype = RequestAddressType();
+        if (atype == socks5::AddressType::ipv4) {
+            ba::ip::address_v4::bytes_type bytes;
+            for (std::size_t i = 0; i < 4; ++i) {  // 4 = ipv4 addr byte size
+                bytes[i] = static_cast<unsigned char>(downstream_buf_[4 + i]);
+            }
+            return ba::ip::address(ba::ip::address_v4(bytes));
+        } else if (atype == socks5::AddressType::ipv6) {
+            ba::ip::address_v6::bytes_type bytes;
+            for (std::size_t i = 0; i < 16; ++i) {  // 16 = ipv6 addr byte size
+                bytes[i] = static_cast<unsigned char>(downstream_buf_[4 + i]);
+            }
+            return ba::ip::address(ba::ip::address_v6(bytes));
+        }
+
+        return ba::ip::address();
+    }
+
     void ProcessRequest() {
         const unsigned char cmd = downstream_buf_[1];
         const unsigned char atyp = downstream_buf_[3];
