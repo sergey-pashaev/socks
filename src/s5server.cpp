@@ -423,7 +423,7 @@ class Session : public std::enable_shared_from_this<Session> {
                 UpstreamRead();
                 DownstreamRead();
             } else {
-                Close();
+                Close(ec.message());
             }
         };
 
@@ -437,7 +437,7 @@ class Session : public std::enable_shared_from_this<Session> {
             if (!ec) {
                 DownstreamWrite(length);
             } else {
-                Close();
+                Close(ec == ba::error::eof ? "" : ec.message());
             }
         };
 
@@ -451,7 +451,7 @@ class Session : public std::enable_shared_from_this<Session> {
             if (!ec) {
                 UpstreamWrite(length);
             } else {
-                Close();
+                Close(ec == ba::error::eof ? "" : ec.message());
             }
         };
 
@@ -466,7 +466,7 @@ class Session : public std::enable_shared_from_this<Session> {
             if (!ec) {
                 UpstreamRead();
             } else {
-                Close();
+                Close(ec == ba::error::eof ? "" : ec.message());
             }
         };
 
@@ -481,7 +481,7 @@ class Session : public std::enable_shared_from_this<Session> {
             if (!ec) {
                 DownstreamRead();
             } else {
-                Close();
+                Close(ec == ba::error::eof ? "" : ec.message());
             }
         };
 
