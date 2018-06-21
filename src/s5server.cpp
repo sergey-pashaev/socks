@@ -303,46 +303,107 @@ class Session : public std::enable_shared_from_this<Session> {
     }
 
     void ProcessRequest() {
-        const unsigned char cmd = downstream_buf_[1];
-        const unsigned char atyp = downstream_buf_[3];
-
-        switch (atyp) {
-            case 0x01: {
-                ba::ip::address_v4::bytes_type baddr = {
-                    static_cast<unsigned char>(downstream_buf_[4]),
-                    static_cast<unsigned char>(downstream_buf_[5]),
-                    static_cast<unsigned char>(downstream_buf_[6]),
-                    static_cast<unsigned char>(downstream_buf_[7])};
-                ba::ip::address_v4 addr(baddr);
+        switch (RequestCommand()) {
+            case socks5::Command::connect: {
+                Connect();
                 break;
             }
-            case 0x03: {
-                const std::size_t length = downstream_buf_[4];
-                std::string hostname((downstream_buf_.data() + 5), length);
+            case socks5::Command::bind: {
+                Bind();
                 break;
             }
-            case 0x04: {
-                ba::ip::address_v6::bytes_type baddr = {
-                    static_cast<unsigned char>(downstream_buf_[4]),
-                    static_cast<unsigned char>(downstream_buf_[5]),
-                    static_cast<unsigned char>(downstream_buf_[6]),
-                    static_cast<unsigned char>(downstream_buf_[7]),
-                    static_cast<unsigned char>(downstream_buf_[8]),
-                    static_cast<unsigned char>(downstream_buf_[9])};
-                ba::ip::address_v6 addr(baddr);
+            case socks5::Command::udp_associate: {
+                UdpAssociate();
                 break;
             }
             default:
+                Response(socks5::Reply::command_not_supported);
                 break;
         }
-
-        Close();
     }
 
-    socks5::Reply CheckAccess(const std::string&, tcp::endpoint) {
-        // todo:
-        return socks5::Reply::succeeded;
+    void Connect() {
+        if (RequestAddressType() == socks5::AddressType::domain_name) {
+            auto resolver = std::make_shared<tcp::resolver>(
+                downstream_socket_.get_io_service());
+            auto self(shared_from_this());
+            auto handler = [this, self, resolver](
+                const bs::error_code& ec, tcp::resolver::iterator ep_iterator) {
+                if (ec) {
+                    Close(ec.message());
+                    return;
+                }
+
+                Connect(ep_iterator);
+            };
+
+            tcp::resolver::query q{RequestDomainName(),
+                                   std::to_string(RequestPort())};
+            resolver->async_resolve(q, handler);
+        } else {
+            // fixme:
+            tcp::endpoint ep{RequestAddress(), RequestPort()};
+            auto ep_iterator = tcp::resolver::iterator::create(
+                ep, RequestDomainName(), std::to_string(RequestPort()));
+            Connect(ep_iterator);
+        }
     }
+
+    void Connect(tcp::resolver::iterator ep_iterator) {
+        // todo: add args
+        if (!CheckAccess()) {
+            Response(socks5::Reply::connection_not_allowed_by_ruleset);
+            return;
+        }
+
+        auto self(shared_from_this());
+        auto handler = [this, self](const bs::error_code& ec,
+                                    tcp::resolver::iterator it) {
+            if (ec) {
+                // todo: use Response(reply)
+                Close(ec.message());
+                return;
+            }
+
+            // todo: refactor ConnectResponse & Response into single function w/
+            // std::function extra parameter, to replce Close() call int
+            // response
+            ConnectResponse(socks5::Reply::succeeded);
+        };
+
+        ba::async_connect(upstream_socket_, ep_iterator, handler);
+    }
+
+    void ConnectResponse(socks5::Reply reply) {
+        auto self(shared_from_this());
+        auto handler = [this, self](const bs::error_code& ec, std::size_t) {
+            if (ec) {
+                Close(ec.message());
+                return;
+            }
+
+            UpstreamRead();
+            DownstreamRead();
+        };
+
+        downstream_buf_[0] = socks5::version;
+        downstream_buf_[1] = static_cast<unsigned char>(reply);
+        downstream_buf_[2] = socks5::reserved;
+        downstream_buf_[3] = static_cast<unsigned char>(RequestAddressType());
+
+        const std::size_t response_size = RequestSize();  // same as request
+        for (std::size_t i = 4; i < response_size; ++i) {
+            downstream_buf_[i] = 0x00;
+        }
+
+        ba::async_write(downstream_socket_,
+                        ba::buffer(downstream_buf_.data(), response_size),
+                        handler);
+    }
+
+    void Bind() {}                       // todo:
+    void UdpAssociate() {}               // todo:
+    bool CheckAccess() { return true; }  // todo:
 
     void Close(std::string msg = std::string()) {
         std::cerr << msg << '\n';
