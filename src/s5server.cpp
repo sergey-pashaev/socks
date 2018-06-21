@@ -153,6 +153,8 @@ class Session : public std::enable_shared_from_this<Session> {
         return static_cast<socks5::AddressType>(downstream_buf_[3]);
     }
 
+    std::size_t RequestDomainNameSize() const { return downstream_buf_[4]; }
+
     std::size_t RequestSize() const {
         switch (RequestAddressType()) {
             case socks5::AddressType::ipv4: {
@@ -160,8 +162,7 @@ class Session : public std::enable_shared_from_this<Session> {
                 break;
             }
             case socks5::AddressType::domain_name: {
-                const unsigned char addr_size = downstream_buf_[4];
-                return 7 + addr_size;
+                return 7 + RequestDomainNameSize();
                 break;
             }
             case socks5::AddressType::ipv6: {
@@ -171,6 +172,35 @@ class Session : public std::enable_shared_from_this<Session> {
         }
 
         return 0;
+    }
+
+    std::string RequestDomainName() const {
+        return std::string(downstream_buf_.data() + 5, RequestDomainNameSize());
+    }
+
+    unsigned short RequestPort() const {
+        const std::size_t offset = [this]() -> std::size_t {
+            switch (RequestAddressType()) {
+                case socks5::AddressType::ipv4: {
+                    return 8;
+                    break;
+                }
+                case socks5::AddressType::domain_name: {
+                    return 5 + RequestDomainNameSize();
+                    break;
+                }
+                case socks5::AddressType::ipv6: {
+                    return 20;
+                    break;
+                }
+            }
+        }();
+
+        unsigned short port = downstream_buf_[offset];
+        port = (port << 8) & 0xFF00;
+        port = port | downstream_buf_[offset + 1];
+
+        return port;
     }
 
     void ReadRequest() {
