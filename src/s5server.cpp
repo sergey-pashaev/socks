@@ -441,7 +441,8 @@ class Session : public std::enable_shared_from_this<Session> {
             }
         };
 
-        upstream_socket_.async_read_some(ba::buffer(upstream_buf_), handler);
+        upstream_socket_.async_read_some(
+            ba::buffer(upstream_buf_.data(), upstream_buf_.size()), handler);
     }
 
     void DownstreamRead() {
@@ -455,8 +456,9 @@ class Session : public std::enable_shared_from_this<Session> {
             }
         };
 
-        downstream_socket_.async_read_some(ba::buffer(downstream_buf_),
-                                           handler);
+        downstream_socket_.async_read_some(
+            ba::buffer(downstream_buf_.data(), downstream_buf_.size()),
+            handler);
     }
 
     void DownstreamWrite(std::size_t length) {
@@ -470,8 +472,8 @@ class Session : public std::enable_shared_from_this<Session> {
             }
         };
 
-        ba::async_write(downstream_socket_, ba::buffer(upstream_buf_, length),
-                        handler);
+        ba::async_write(downstream_socket_,
+                        ba::buffer(upstream_buf_.data(), length), handler);
     }
 
     void UpstreamWrite(std::size_t length) {
@@ -485,8 +487,8 @@ class Session : public std::enable_shared_from_this<Session> {
             }
         };
 
-        ba::async_write(upstream_socket_, ba::buffer(downstream_buf_, length),
-                        handler);
+        ba::async_write(upstream_socket_,
+                        ba::buffer(downstream_buf_.data(), length), handler);
     }
 
    private:
