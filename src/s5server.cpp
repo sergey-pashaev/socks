@@ -366,8 +366,8 @@ class Session : public std::enable_shared_from_this<Session> {
             }
 
             // todo: refactor ConnectResponse & Response into single function w/
-            // std::function extra parameter, to replce Close() call int
-            // response
+            // std::function extra parameter, to replace Close() call in
+            // Response()
             ConnectResponse(socks5::Reply::succeeded);
         };
 
