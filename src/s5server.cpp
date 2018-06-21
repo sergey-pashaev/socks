@@ -219,8 +219,7 @@ class Session : public std::enable_shared_from_this<Session> {
             } else {
                 const std::size_t request_size = RequestSize();
                 if (request_size == 0) {
-                    Response(socks5::Reply::address_type_not_supported,
-                             RequestAddressType());
+                    Response(socks5::Reply::address_type_not_supported);
                     return;
                 }
 
@@ -254,7 +253,7 @@ class Session : public std::enable_shared_from_this<Session> {
             handler);
     }
 
-    void Response(socks5::Reply reply, socks5::AddressType atype) {
+    void Response(socks5::Reply reply) {
         auto self(shared_from_this());
         auto handler = [this, self](const bs::error_code& ec, std::size_t) {
             if (ec) {
@@ -268,7 +267,7 @@ class Session : public std::enable_shared_from_this<Session> {
         downstream_buf_[0] = socks5::version;
         downstream_buf_[1] = static_cast<unsigned char>(reply);
         downstream_buf_[2] = socks5::reserved;
-        downstream_buf_[3] = static_cast<unsigned char>(atype);
+        downstream_buf_[3] = static_cast<unsigned char>(RequestAddressType());
 
         // fixme
         for (std::size_t i = 4; i < 10; ++i) {  // minimum response size
