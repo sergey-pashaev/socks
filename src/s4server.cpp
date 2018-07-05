@@ -14,11 +14,11 @@ using tcp = ba::ip::tcp;
 class Session : public std::enable_shared_from_this<Session> {
    private:
     struct _ctor_tag {
-        explicit _ctor_tag() {}
+        explicit _ctor_tag() = default;
     };
 
    public:
-    Session(_ctor_tag, ba::io_service& io)
+    Session(_ctor_tag /*unused*/, ba::io_service& io)
         : downstream_socket_{io}, upstream_socket_{io} {}
 
     static std::unique_ptr<Session> Create(ba::io_service& io) {
@@ -68,7 +68,8 @@ class Session : public std::enable_shared_from_this<Session> {
         ba::async_read_until(downstream_socket_, buf_, 0x00, handler);
     }
 
-    socks4::Response::Status CheckAccess(const std::string&, tcp::endpoint) {
+    socks4::Response::Status CheckAccess(const std::string& /*unused*/,
+                                         tcp::endpoint /*unused*/) {
         // todo:
         return socks4::Response::Status::granted;
     }
@@ -263,10 +264,14 @@ class Server {
 };
 
 int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        std::cout << "Usage: " << argv[1] << " <port>\n";
+        return 1;
+    }
+
     try {
         ba::io_service io;
-        tcp::endpoint ep(tcp::v4(),
-                         static_cast<unsigned short>(std::atoi(argv[1])));
+        tcp::endpoint ep(tcp::v4(), static_cast<uint16_t>(std::atoi(argv[1])));
         Server s{io, ep};
         io.run();
     } catch (std::exception& e) {
