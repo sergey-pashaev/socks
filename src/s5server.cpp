@@ -52,11 +52,11 @@ enum class Reply : unsigned char {
 class Session : public std::enable_shared_from_this<Session> {
    private:
     struct _ctor_tag {
-        explicit _ctor_tag() {}
+        explicit _ctor_tag() = default;
     };
 
    public:
-    Session(_ctor_tag, ba::io_service& io)
+    Session(_ctor_tag /*unused*/, ba::io_service& io)
         : downstream_socket_{io}, upstream_socket_{io} {}
 
     static std::unique_ptr<Session> Create(ba::io_service& io) {
@@ -178,7 +178,7 @@ class Session : public std::enable_shared_from_this<Session> {
         return std::string(downstream_buf_.data() + 5, RequestDomainNameSize());
     }
 
-    unsigned short RequestPort() const {
+    uint16_t RequestPort() const {
         const std::size_t offset = [this]() -> std::size_t {
             switch (RequestAddressType()) {
                 case socks5::AddressType::ipv4: {
@@ -196,9 +196,9 @@ class Session : public std::enable_shared_from_this<Session> {
             }
         }();
 
-        unsigned short port = downstream_buf_[offset];
+        uint16_t port = downstream_buf_.at(offset);
         port = (port << 8) & 0xFF00;
-        port = port | downstream_buf_[offset + 1];
+        port = port | downstream_buf_.at(offset + 1);
 
         return port;
     }
@@ -271,7 +271,7 @@ class Session : public std::enable_shared_from_this<Session> {
 
         const std::size_t response_size = RequestSize();  // same as request
         for (std::size_t i = 4; i < response_size; ++i) {
-            downstream_buf_[i] = 0x00;
+            downstream_buf_.at(i) = 0x00;
         }
 
         ba::async_write(downstream_socket_,
@@ -288,14 +288,20 @@ class Session : public std::enable_shared_from_this<Session> {
         if (atype == socks5::AddressType::ipv4) {
             ba::ip::address_v4::bytes_type bytes;
             for (std::size_t i = 0; i < 4; ++i) {  // 4 = ipv4 addr byte size
-                bytes[i] = static_cast<unsigned char>(downstream_buf_[4 + i]);
+                bytes.at(i) =
+                    static_cast<unsigned char>(downstream_buf_.at(4 + i));
             }
+
             return ba::ip::address(ba::ip::address_v4(bytes));
-        } else if (atype == socks5::AddressType::ipv6) {
+        }
+
+        if (atype == socks5::AddressType::ipv6) {
             ba::ip::address_v6::bytes_type bytes;
             for (std::size_t i = 0; i < 16; ++i) {  // 16 = ipv6 addr byte size
-                bytes[i] = static_cast<unsigned char>(downstream_buf_[4 + i]);
+                bytes.at(i) =
+                    static_cast<unsigned char>(downstream_buf_.at(4 + i));
             }
+
             return ba::ip::address(ba::ip::address_v6(bytes));
         }
 
@@ -393,7 +399,7 @@ class Session : public std::enable_shared_from_this<Session> {
 
         const std::size_t response_size = RequestSize();  // same as request
         for (std::size_t i = 4; i < response_size; ++i) {
-            downstream_buf_[i] = 0x00;
+            downstream_buf_.at(i) = 0x00;
         }
 
         ba::async_write(downstream_socket_,
@@ -526,10 +532,14 @@ class Server {
 };
 
 int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        std::cout << "Usage: " << argv[1] << " <port>\n";
+        return 1;
+    }
+
     try {
         ba::io_service io;
-        tcp::endpoint ep(tcp::v4(),
-                         static_cast<unsigned short>(std::atoi(argv[1])));
+        tcp::endpoint ep(tcp::v4(), static_cast<uint16_t>(std::atoi(argv[1])));
         Server s{io, ep};
         io.run();
     } catch (std::exception& e) {
