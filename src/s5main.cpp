@@ -6,7 +6,7 @@
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cout << "Usage: " << argv[1] << " <port>\n";
+        std::cout << "Usage: " << argv[0] << " <port>\n";
         return 1;
     }
 
