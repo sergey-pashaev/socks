@@ -71,7 +71,7 @@ class Session : public std::enable_shared_from_this<Session> {
     void UdpAssociate();
     bool CheckAccess();
 
-    void Close(std::string msg = std::string());
+    void Close(const bs::error_code& ec);
 
     void Relay(tcp::endpoint ep);
 

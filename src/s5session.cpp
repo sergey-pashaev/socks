@@ -25,7 +25,7 @@ void Session::ReadAuthRequest() {
     auto self(shared_from_this());
     auto handler = [this, self](const bs::error_code& ec, std::size_t length) {
         if (ec) {
-            Close(ec.message());
+            Close(ec);
             return;
         }
 
@@ -52,7 +52,7 @@ void Session::ReadAuthMethods() {
     auto self(shared_from_this());
     auto handler = [this, self](const bs::error_code& ec, std::size_t length) {
         if (ec) {
-            Close(ec.message());
+            Close(ec);
             return;
         }
 
@@ -74,7 +74,7 @@ void Session::AuthResponse() {
     auto self(shared_from_this());
     auto handler = [this, self](const bs::error_code& ec, std::size_t) {
         if (ec) {
-            Close(ec.message());
+            Close(ec);
             return;
         }
 
@@ -151,7 +151,7 @@ void Session::ReadRequest() {
     auto self(shared_from_this());
     auto handler = [this, self](const bs::error_code& ec, std::size_t length) {
         if (ec) {
-            Close(ec.message());
+            Close(ec);
             return;
         }
 
@@ -180,7 +180,7 @@ void Session::ReadRequest(std::size_t bytes_left) {
     auto self(shared_from_this());
     auto handler = [this, self](const bs::error_code& ec, std::size_t length) {
         if (ec) {
-            Close(ec.message());
+            Close(ec);
             return;
         }
 
@@ -198,11 +198,11 @@ void Session::Response(socks5::Reply reply) {
     auto self(shared_from_this());
     auto handler = [this, self](const bs::error_code& ec, std::size_t) {
         if (ec) {
-            Close(ec.message());
+            Close(ec);
             return;
         }
 
-        Close();
+        Close(bs::errc::make_error_code(bs::errc::success));
     };
 
     downstream_buf_[0] = socks5::version;
@@ -274,7 +274,7 @@ void Session::Connect() {
         auto handler = [this, self, resolver](
             const bs::error_code& ec, tcp::resolver::iterator ep_iterator) {
             if (ec) {
-                Close(ec.message());
+                Close(ec);
                 return;
             }
 
@@ -305,7 +305,7 @@ void Session::Connect(tcp::resolver::iterator ep_iterator) {
                                 tcp::resolver::iterator it) {
         if (ec) {
             // todo: use Response(reply)
-            Close(ec.message());
+            Close(ec);
             return;
         }
 
@@ -322,7 +322,7 @@ void Session::ConnectResponse(socks5::Reply reply) {
     auto self(shared_from_this());
     auto handler = [this, self](const bs::error_code& ec, std::size_t) {
         if (ec) {
-            Close(ec.message());
+            Close(ec);
             return;
         }
 
@@ -347,9 +347,8 @@ void Session::ConnectResponse(socks5::Reply reply) {
 void Session::Bind() {}                       // todo:
 void Session::UdpAssociate() {}               // todo:
 bool Session::CheckAccess() { return true; }  // todo:
+void Session::Close(const bs::error_code& ec) {
 
-void Session::Close(std::string msg) {
-    std::cerr << msg << '\n';
     if (downstream_socket_.is_open()) {
         downstream_socket_.close();
     }
@@ -366,7 +365,7 @@ void Session::Relay(tcp::endpoint ep) {
             UpstreamRead();
             DownstreamRead();
         } else {
-            Close(ec.message());
+            Close(ec);
         }
     };
 
@@ -379,7 +378,7 @@ void Session::UpstreamRead() {
         if (!ec) {
             DownstreamWrite(length);
         } else {
-            Close(ec == ba::error::eof ? "" : ec.message());
+            Close(ec);
         }
     };
 
@@ -393,7 +392,7 @@ void Session::DownstreamRead() {
         if (!ec) {
             UpstreamWrite(length);
         } else {
-            Close(ec == ba::error::eof ? "" : ec.message());
+            Close(ec);
         }
     };
 
@@ -407,7 +406,7 @@ void Session::DownstreamWrite(std::size_t length) {
         if (!ec) {
             UpstreamRead();
         } else {
-            Close(ec == ba::error::eof ? "" : ec.message());
+            Close(ec);
         }
     };
 
@@ -421,7 +420,7 @@ void Session::UpstreamWrite(std::size_t length) {
         if (!ec) {
             DownstreamRead();
         } else {
-            Close(ec == ba::error::eof ? "" : ec.message());
+            Close(ec);
         }
     };
 
