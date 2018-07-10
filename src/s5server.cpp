@@ -1,8 +1,11 @@
 #include "s5server.h"
 
+#include <boost/log/trivial.hpp>
+
 namespace socks5 {
 
 Server::Server(ba::io_service& io, tcp::endpoint ep) : acceptor_{io, ep} {
+    BOOST_LOG_TRIVIAL(info) << "accept on " << ep;
     Accept();
 }
 

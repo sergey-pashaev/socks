@@ -1,5 +1,7 @@
 #include "s5session.h"
 
+#include <boost/log/trivial.hpp>
+
 namespace socks5 {
 
 Session::Session(_ctor_tag /*unused*/, ba::io_service& io)
@@ -11,6 +13,10 @@ std::unique_ptr<Session> Session::Create(ba::io_service& io) {
 
 void Session::Start() {
     downstream_bytes_read_ = 0;
+    BOOST_LOG_TRIVIAL(info) << "session=" << this << ' '
+                            << downstream_socket_.local_endpoint() << " <- "
+                            << downstream_socket_.remote_endpoint();
+
     ReadAuthRequest();
 }
 
@@ -86,6 +92,8 @@ void Session::AuthResponse() {
     downstream_buf_[0] = socks5::version;
     downstream_buf_[1] =
         static_cast<unsigned char>(socks5::AuthMethod::no_auth);
+
+    BOOST_LOG_TRIVIAL(info) << "session=" << this << " no auth method";
 
     ba::async_write(downstream_socket_,
                     ba::buffer(downstream_buf_.data(), response_size), handler);
@@ -283,6 +291,10 @@ void Session::Connect() {
 
         tcp::resolver::query q{RequestDomainName(),
                                std::to_string(RequestPort())};
+
+        BOOST_LOG_TRIVIAL(info) << "session=" << this << " resolve "
+                                << q.host_name() << ':' << q.service_name();
+
         resolver->async_resolve(q, handler);
     } else {
         // fixme:
@@ -314,6 +326,9 @@ void Session::Connect(tcp::resolver::iterator ep_iterator) {
         // Response()
         ConnectResponse(socks5::Reply::succeeded);
     };
+
+    BOOST_LOG_TRIVIAL(info) << "session=" << this << " connect to "
+                            << ep_iterator->endpoint();
 
     ba::async_connect(upstream_socket_, ep_iterator, handler);
 }
@@ -347,7 +362,9 @@ void Session::ConnectResponse(socks5::Reply reply) {
 void Session::Bind() {}                       // todo:
 void Session::UdpAssociate() {}               // todo:
 bool Session::CheckAccess() { return true; }  // todo:
+
 void Session::Close(const bs::error_code& ec) {
+    BOOST_LOG_TRIVIAL(info) << "session=" << this << " close: " << ec.message();
 
     if (downstream_socket_.is_open()) {
         downstream_socket_.close();
@@ -376,6 +393,11 @@ void Session::UpstreamRead() {
     auto self(shared_from_this());
     auto handler = [this, self](const bs::error_code& ec, std::size_t length) {
         if (!ec) {
+            BOOST_LOG_TRIVIAL(info)
+                << "session=" << this << ' '
+                << upstream_socket_.local_endpoint() << " <- "
+                << upstream_socket_.remote_endpoint() << ' ' << length << 'b';
+
             DownstreamWrite(length);
         } else {
             Close(ec);
@@ -390,6 +412,11 @@ void Session::DownstreamRead() {
     auto self(shared_from_this());
     auto handler = [this, self](const bs::error_code& ec, std::size_t length) {
         if (!ec) {
+            BOOST_LOG_TRIVIAL(info)
+                << "session=" << this << ' '
+                << downstream_socket_.local_endpoint() << " <- "
+                << downstream_socket_.remote_endpoint() << ' ' << length << 'b';
+
             UpstreamWrite(length);
         } else {
             Close(ec);
@@ -404,6 +431,11 @@ void Session::DownstreamWrite(std::size_t length) {
     auto self(shared_from_this());
     auto handler = [this, self](const bs::error_code& ec, std::size_t length) {
         if (!ec) {
+            BOOST_LOG_TRIVIAL(info)
+                << "session=" << this << ' '
+                << downstream_socket_.local_endpoint() << " -> "
+                << downstream_socket_.remote_endpoint() << ' ' << length << 'b';
+
             UpstreamRead();
         } else {
             Close(ec);
@@ -418,6 +450,11 @@ void Session::UpstreamWrite(std::size_t length) {
     auto self(shared_from_this());
     auto handler = [this, self](const bs::error_code& ec, std::size_t length) {
         if (!ec) {
+            BOOST_LOG_TRIVIAL(info)
+                << "session=" << this << ' '
+                << upstream_socket_.local_endpoint() << " -> "
+                << upstream_socket_.remote_endpoint() << ' ' << length << 'b';
+
             DownstreamRead();
         } else {
             Close(ec);

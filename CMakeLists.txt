@@ -66,14 +66,14 @@ if(USE_IWYU)
 endif()
 
 # boost
-set(Boost_USE_STATIC_LIBS OFF)
+set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 
 if(MSVC)
-  find_package(Boost 1.60 REQUIRED COMPONENTS system thread)
+  find_package(Boost 1.60 REQUIRED COMPONENTS system thread log)
 else()
-  find_package(Boost 1.54 REQUIRED COMPONENTS system thread)
+  find_package(Boost 1.54 REQUIRED COMPONENTS system thread log)
 endif()
 message(STATUS "Boost version: ${Boost_VERSION}")
 
