@@ -104,7 +104,7 @@ socks5::AddressType Session::RequestAddressType() const {
 }
 
 std::size_t Session::RequestDomainNameSize() const {
-    return downstream_buf_[4];
+    return static_cast<unsigned char>(downstream_buf_[4]);
 }
 
 std::size_t Session::RequestSize() const {
