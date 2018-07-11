@@ -185,6 +185,11 @@ void Session::ReadRequest() {
 }
 
 void Session::ReadRequest(std::size_t bytes_left) {
+    if (!bytes_left) {
+        ProcessRequest();
+        return;
+    }
+
     auto self(shared_from_this());
     auto handler = [this, self](const bs::error_code& ec, std::size_t length) {
         if (ec) {
