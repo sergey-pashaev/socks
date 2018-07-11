@@ -93,8 +93,6 @@ void Session::AuthResponse() {
     downstream_buf_[1] =
         static_cast<unsigned char>(socks5::AuthMethod::no_auth);
 
-    BOOST_LOG_TRIVIAL(info) << "session=" << this << " no auth method";
-
     ba::async_write(downstream_socket_,
                     ba::buffer(downstream_buf_.data(), response_size), handler);
 }
