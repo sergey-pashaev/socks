@@ -1,0 +1,25 @@
+FROM ubuntu:18.04
+
+WORKDIR /usr/src
+
+ARG BUILD_TOOLS='\
+    make \
+    cmake \
+    g++ \
+    clang'
+
+RUN apt-get update -qq && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $BUILD_TOOLS
+
+ARG BUILD_DEPENDENCIES='\
+    libboost-system-dev \
+    libboost-thread-dev \
+    libboost-regex-dev \
+    libboost-log-dev'
+
+RUN apt-get update -qq && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $BUILD_DEPENDENCIES
+
+COPY . $WORKDIR
+
+CMD ./build.sh

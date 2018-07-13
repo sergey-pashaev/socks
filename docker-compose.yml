@@ -1,0 +1,9 @@
+---
+version: '3'
+
+services:
+  socks:
+    image: socks.run:latest
+    restart: on-failure
+    ports:
+      - '1080:1080'

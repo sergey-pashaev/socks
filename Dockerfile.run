@@ -1,0 +1,16 @@
+FROM ubuntu:18.04
+
+WORKDIR /opt/socks
+
+ARG RUNTIME_DEPENDENCIES='\
+    libboost-system1.65.1 \
+    libboost-thread1.65.1 \
+    libboost-regex1.65.1 \
+    libboost-log1.65.1'
+
+RUN apt-get update -qq && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $RUNTIME_DEPENDENCIES
+
+COPY build/src/s5server ${WORKDIR}
+
+CMD ["./s5server", "1080"]
