@@ -3,23 +3,25 @@ FROM ubuntu:18.04
 WORKDIR /usr/src
 
 ARG BUILD_TOOLS='\
-    make \
+    clang \
     cmake \
     g++ \
-    clang'
+    make'
 
 RUN apt-get update -qq && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $BUILD_TOOLS
+    DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y --no-install-recommends ${BUILD_TOOLS}
 
 ARG BUILD_DEPENDENCIES='\
-    libboost-system-dev \
-    libboost-thread-dev \
+    libboost-log-dev \
     libboost-regex-dev \
-    libboost-log-dev'
+    libboost-system-dev \
+    libboost-thread-dev'
 
 RUN apt-get update -qq && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $BUILD_DEPENDENCIES
+    DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y --no-install-recommends ${BUILD_DEPENDENCIES}
 
-COPY . $WORKDIR
+COPY . ${WORKDIR}
 
-CMD ./build.sh
+CMD make
