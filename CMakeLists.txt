@@ -6,6 +6,8 @@ endif()
 
 project(socks)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # target cpu
 if("${TARGET_CPU}" STREQUAL "amd64")
     set(CMAKE_SIZEOF_VOID_P 8)
