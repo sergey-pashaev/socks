@@ -3,6 +3,9 @@ all: socks
 socks:
 	./build.sh
 
+static-analysis	:
+	./analyze.sh
+
 clean:
 	rm -rf build/
 
