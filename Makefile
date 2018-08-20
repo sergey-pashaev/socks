@@ -19,7 +19,7 @@ run-env:
 	docker build -t socks.run -f Dockerfile.run .
 
 run-bin:
-	docker run -it -d -u $(shell id -u):$(shell id -g) --rm -p 1080:1080 socks.run
+	docker run --name s5 -it -d -u $(shell id -u):$(shell id -g) --rm -p 1080:1080 socks.run
 
 docker-cleanup:
 	docker image prune -f
