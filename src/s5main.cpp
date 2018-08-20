@@ -2,6 +2,8 @@
 
 #include <boost/asio.hpp>
 #include <boost/asio/signal_set.hpp>
+#include <boost/log/core.hpp>
+#include <boost/log/expressions.hpp>
 #include <boost/log/trivial.hpp>
 
 #include "s5server.h"
@@ -17,6 +19,9 @@ int main(int argc, char* argv[]) {
         std::cout << "Usage: " << argv[0] << " <port>\n";
         return 1;
     }
+
+    boost::log::core::get()->set_filter(boost::log::trivial::severity >=
+                                        boost::log::trivial::info);
 
     const uint16_t port = std::atoi(argv[1]);
     boost::asio::io_service io;
