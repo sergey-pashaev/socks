@@ -396,7 +396,7 @@ void Session::UpstreamRead() {
     auto self(shared_from_this());
     auto handler = [this, self](const bs::error_code& ec, std::size_t length) {
         if (!ec) {
-            BOOST_LOG_TRIVIAL(info)
+            BOOST_LOG_TRIVIAL(debug)
                 << "session=" << this << ' '
                 << upstream_socket_.local_endpoint() << " <- "
                 << upstream_socket_.remote_endpoint() << ' ' << length << 'b';
@@ -415,7 +415,7 @@ void Session::DownstreamRead() {
     auto self(shared_from_this());
     auto handler = [this, self](const bs::error_code& ec, std::size_t length) {
         if (!ec) {
-            BOOST_LOG_TRIVIAL(info)
+            BOOST_LOG_TRIVIAL(debug)
                 << "session=" << this << ' '
                 << downstream_socket_.local_endpoint() << " <- "
                 << downstream_socket_.remote_endpoint() << ' ' << length << 'b';
@@ -434,7 +434,7 @@ void Session::DownstreamWrite(std::size_t length) {
     auto self(shared_from_this());
     auto handler = [this, self](const bs::error_code& ec, std::size_t length) {
         if (!ec) {
-            BOOST_LOG_TRIVIAL(info)
+            BOOST_LOG_TRIVIAL(debug)
                 << "session=" << this << ' '
                 << downstream_socket_.local_endpoint() << " -> "
                 << downstream_socket_.remote_endpoint() << ' ' << length << 'b';
@@ -453,7 +453,7 @@ void Session::UpstreamWrite(std::size_t length) {
     auto self(shared_from_this());
     auto handler = [this, self](const bs::error_code& ec, std::size_t length) {
         if (!ec) {
-            BOOST_LOG_TRIVIAL(info)
+            BOOST_LOG_TRIVIAL(debug)
                 << "session=" << this << ' '
                 << upstream_socket_.local_endpoint() << " -> "
                 << upstream_socket_.remote_endpoint() << ' ' << length << 'b';
