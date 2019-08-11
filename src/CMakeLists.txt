@@ -1,8 +1,4 @@
-cmake_minimum_required(VERSION 3.1..3.11)
-
-if(${CMAKE_VERSION} VERSION_LESS 3.12)
-  cmake_policy(VERSION ${CMAKE_VERSION})
-endif()
+cmake_minimum_required(VERSION 3.1)
 
 add_executable(s4server s4server.cpp)
 target_link_libraries(s4server PUBLIC Boost::system Boost::thread)
